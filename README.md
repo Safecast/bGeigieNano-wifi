@@ -1,0 +1,1 @@
+This project is designed to provide a simple wifi interface for the bGeigieNano for use as a fixed sensor. It it would sit on the XBee header and receive data from the Arduino. This data would then be reformatted as JSON for upload to the safecast servers.
