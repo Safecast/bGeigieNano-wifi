@@ -10,6 +10,9 @@
 #include "mem.h"
 #include "safecast.h"
 #include "debug.h"
+#include "nsscanf.h"
+
+char json[1024];
 
 static void ICACHE_FLASH_ATTR safecast_lookup_complete_cb(const char *name, ip_addr_t *ip, void *arg) {
   static esp_tcp tcp;
@@ -66,7 +69,6 @@ static void ICACHE_FLASH_ATTR safecast_connected_cb(void *arg) {
                  "Content-Type: application/json\r\n"
                  "Content-Length: ";
  
-  char *json = "{\"longitude\":\"111.1111\",\"latitude\":\"11.1111\",\"device_id\":\"47\",\"value\":\"63\",\"unit\":\"cpm\"}";
  
   int head_len = strlen(header);
   int json_len = strlen(json);
@@ -101,4 +103,63 @@ void ICACHE_FLASH_ATTR safecast_send_data() {
 
   debug("network lookup\n");
   espconn_gethostbyname(&conn, "dev.safecast.org", &ip, safecast_lookup_complete_cb);
+}
+
+
+
+void ICACHE_FLASH_ATTR safecast_send_nema(char *nema_string) {
+
+  int valid = safecast_nema2json(nema_string,json);
+
+  // normal we will only want to send valid data...
+  safecast_send_data();
+}
+
+// json_string needs to be preallocated and large enough to hold the output
+// Convert NEMA e.g.:
+//$BNRDD,[4digit_device_id],[ISO8601_time],[cpm],[cpb],[total_count],[geiger_status],[lat],[NS],[long],[WE],[altitude],[gps_status],[nbsat],[precision]
+// To JSON e.g. (but I've added captured_at):
+//{"longitude":"111.1111","latitude":"11.1111","device_id":"47","value":"63","unit":"cpm"}
+static ICACHE_FLASH_ATTR int safecast_nema2json(const char *nema_string,char *json_string) {
+
+  int    device_id;
+  char   iso_timestr[50];
+  int    cpm;
+  int    cpb;
+  int    total_count;
+  char   geiger_status;
+  double latitude;
+  char   NorS;
+  double longitude;
+  char   WorE;
+  double altitude;
+  char   gps_status;
+  int    nbsat;
+  int    precision;
+
+  nsscanf(nema_string,
+         "$BNRDD,%04d,%[^,],%d,%d,%d,%c,%f,%c,%f,%c,%f,%c,%d,%d",
+         &device_id,
+         iso_timestr,
+         &cpm,
+         &cpb,
+         &total_count,
+         &geiger_status,
+         &latitude,
+         &NorS,
+         &longitude,
+         &WorE,
+         &altitude,
+         &gps_status,
+         &nbsat,
+         &precision);
+
+  if(NorS == 'S') latitude  = 0-latitude;
+  if(WorE == 'W') longitude = 0-longitude;
+
+  os_sprintf(json_string,"{captured_at\":\"%s\",\"device_id\",\"%d\",\"value\":\"%d\",\"unit\":\"cpm\"}", iso_timestr, longitude, latitude, device_id, cpm);
+
+  if((gps_status == 'A') && (geiger_status == 'A')) return 1;
+                                               else return 0;
+
 }
