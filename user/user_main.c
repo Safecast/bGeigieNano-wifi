@@ -40,7 +40,7 @@ void ICACHE_FLASH_ATTR network_wait_for_ip() {
     char page_buffer[20];
     os_sprintf(page_buffer,"IP: %d.%d.%d.%d\n",IP2STR(&ipconfig.ip));
     uart0_tx_buffer(page_buffer,strlen(page_buffer));
-    safecast_send_data();
+    safecast_send_nema("$BNRDD,0000,2015-01-06T17:31:15Z,0,0,128,V,3537.2633,N,13938.0270,E,37.70,A,9,111*60");
   } else {
     os_timer_setfn(&network_timer, (os_timer_func_t *)network_wait_for_ip, NULL);
     os_timer_arm(&network_timer, 1000, 0);

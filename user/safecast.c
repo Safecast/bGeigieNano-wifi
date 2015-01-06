@@ -106,7 +106,6 @@ void ICACHE_FLASH_ATTR safecast_send_data() {
 }
 
 
-
 void ICACHE_FLASH_ATTR safecast_send_nema(char *nema_string) {
 
   int valid = safecast_nema2json(nema_string,json);
