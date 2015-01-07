@@ -11,6 +11,8 @@
 #include "safecast.h"
 #include "debug.h"
 #include "nsscanf.h"
+#include "user_config.h"
+
 
 char json[1024];
 
@@ -18,14 +20,14 @@ static void ICACHE_FLASH_ATTR safecast_lookup_complete_cb(const char *name, ip_a
   static esp_tcp tcp;
   struct espconn *conn=(struct espconn *)arg;
   if (ip==NULL) {
-    debug("DNS lookup failed\n");
-    network_init();
+    debug("DNS lookup failed");
+    return;
   }
 
   debug("DNS lookup successful");
 
-  char page_buffer[40];
-  os_sprintf(page_buffer,"IP: %d.%d.%d.%d\n", *((uint8 *)&ip->addr), *((uint8 *)&ip->addr + 1), *((uint8 *)&ip->addr + 2), *((uint8 *)&ip->addr + 3));
+  char page_buffer[50];
+  os_sprintf(page_buffer,"lookupIP: %d.%d.%d.%d", *((uint8 *)&ip->addr), *((uint8 *)&ip->addr + 1), *((uint8 *)&ip->addr + 2), *((uint8 *)&ip->addr + 3));
   debug(page_buffer);
 
   conn->type=ESPCONN_TCP;
@@ -35,20 +37,20 @@ static void ICACHE_FLASH_ATTR safecast_lookup_complete_cb(const char *name, ip_a
   conn->proto.tcp->remote_port=80;
   os_memcpy(conn->proto.tcp->remote_ip, &ip->addr, 4);
   espconn_regist_connectcb(conn, safecast_connected_cb);
-  espconn_regist_disconcb(conn, safecast_disconnected_cb);
-  espconn_regist_reconcb(conn, safecast_reconnected_cb);
-  espconn_regist_recvcb(conn, safecast_recv_cb);
-  espconn_regist_sentcb(conn, safecast_sent_cb);
+  espconn_regist_disconcb (conn, safecast_disconnected_cb);
+  espconn_regist_reconcb  (conn, safecast_reconnected_cb);
+  espconn_regist_recvcb   (conn, safecast_recv_cb);
+  espconn_regist_sentcb   (conn, safecast_sent_cb);
   espconn_connect(conn);
 }
 
 static void ICACHE_FLASH_ATTR safecast_sent_cb(void *arg) {
-  debug("sent");
+  debug("sent callback");
 }
 
 static void ICACHE_FLASH_ATTR safecast_recv_cb(void *arg, char *data, unsigned short len) {
 
-  debug("recv");
+  debug("recv callback");
   
   struct espconn *conn=(struct espconn *)arg;
   int x;
@@ -57,12 +59,12 @@ static void ICACHE_FLASH_ATTR safecast_recv_cb(void *arg, char *data, unsigned s
 
 static void ICACHE_FLASH_ATTR safecast_connected_cb(void *arg) {
 
-  uart0_tx_buffer("conn",4);
+  debug("connect callback start");
   struct espconn *conn=(struct espconn *)arg;
 
   char transmission[1024];
 
-  char *header = "POST /measurements.json?api_key=YOURAPIKEY HTTP/1.1\r\n"
+  char *header = "POST /measurements.json?api_key=" APIKEY " HTTP/1.1\r\n"
                  "Host: dev.safecast.org\r\n"
                  "Accept: */*\r\n"
                  "User-Agent: Arduino\r\n"
@@ -85,15 +87,15 @@ static void ICACHE_FLASH_ATTR safecast_connected_cb(void *arg) {
   sint8 d = espconn_sent(conn,transmission,strlen(transmission));
 
   espconn_regist_recvcb(conn, safecast_recv_cb);
-  uart0_tx_buffer("cend",4);
+  debug("connect callback end");
 }
 
 static void ICACHE_FLASH_ATTR safecast_reconnected_cb(void *arg, sint8 err) {
-  uart0_tx_buffer("rcon",4);
+  debug("reconnect callback");
 }
 
 static void ICACHE_FLASH_ATTR safecast_disconnected_cb(void *arg) {
-  uart0_tx_buffer("dcon",4);
+  debug("disconnect callback");
 }
 
 
@@ -101,7 +103,7 @@ void ICACHE_FLASH_ATTR safecast_send_data() {
   static struct espconn conn;
   static ip_addr_t ip;
 
-  debug("network lookup\n");
+  debug("network lookup");
   espconn_gethostbyname(&conn, "dev.safecast.org", &ip, safecast_lookup_complete_cb);
 }
 
@@ -109,6 +111,7 @@ void ICACHE_FLASH_ATTR safecast_send_data() {
 void ICACHE_FLASH_ATTR safecast_send_nema(char *nema_string) {
 
   int valid = safecast_nema2json(nema_string,json);
+  debug(json);
 
   // normal we will only want to send valid data...
   safecast_send_data();
@@ -119,7 +122,7 @@ void ICACHE_FLASH_ATTR safecast_send_nema(char *nema_string) {
 //$BNRDD,[4digit_device_id],[ISO8601_time],[cpm],[cpb],[total_count],[geiger_status],[lat],[NS],[long],[WE],[altitude],[gps_status],[nbsat],[precision]
 // To JSON e.g. (but I've added captured_at):
 //{"longitude":"111.1111","latitude":"11.1111","device_id":"47","value":"63","unit":"cpm"}
-static ICACHE_FLASH_ATTR int safecast_nema2json(const char *nema_string,char *json_string) {
+ICACHE_FLASH_ATTR int safecast_nema2json(const char *nema_string,char *json_string) {
 
   int    device_id;
   char   iso_timestr[50];
@@ -127,17 +130,20 @@ static ICACHE_FLASH_ATTR int safecast_nema2json(const char *nema_string,char *js
   int    cpb;
   int    total_count;
   char   geiger_status;
-  double latitude;
+  float  latitude;
   char   NorS;
-  double longitude;
+  float  longitude;
   char   WorE;
-  double altitude;
+  float  altitude;
   char   gps_status;
   int    nbsat;
-  int    precision;
+  char    precision[50];
+
+  iso_timestr[0]=0;
 
   nsscanf(nema_string,
-         "$BNRDD,%04d,%[^,],%d,%d,%d,%c,%f,%c,%f,%c,%f,%c,%d,%d",
+         "$BNRDD,%04d,%[^,],%d,%d,%d,%c,%f,%c,%f,%c,%f,%c,%d,%s",
+         //"$BNRDD,%04d,%[^,],%d,%d,%d,%c,%d,%c,%d,%c,%d,%c,%d,%d",
          &device_id,
          iso_timestr,
          &cpm,
@@ -151,12 +157,21 @@ static ICACHE_FLASH_ATTR int safecast_nema2json(const char *nema_string,char *js
          &altitude,
          &gps_status,
          &nbsat,
-         &precision);
+         precision);
 
   if(NorS == 'S') latitude  = 0-latitude;
   if(WorE == 'W') longitude = 0-longitude;
 
-  os_sprintf(json_string,"{captured_at\":\"%s\",\"device_id\",\"%d\",\"value\":\"%d\",\"unit\":\"cpm\"}", iso_timestr, longitude, latitude, device_id, cpm);
+  // os_sprintf doesn't support floating point values, awesome!
+  int longitude_a = longitude;
+  int longitude_b = (longitude-longitude_a)*1000;
+  if(longitude_b < 0) longitude_b = 0-longitude_b;
+
+  int latitude_a = latitude;
+  int latitude_b = (latitude-latitude_a)*1000;
+  if(latitude_b < 0) latitude_b = 0-latitude_b;
+  os_sprintf(json_string,"{\"captured_at\":\"%s\",\"device_id\":\"%d\",\"value\":\"%d\",\"unit\":\"cpm\", \"longitude\":\"%d.%d\", \"latitude\":\"%d.%d\"  }\n", iso_timestr, device_id,cpm, longitude_a,longitude_b, latitude_a,latitude_b);
+  //os_sprintf(json_string,"{\"captured_at\":\"%s\",\"device_id\":\"%d\",\"value\":\"%d\",\"unit\":\"cpm\", \"longitude\":\"%f\", \"latitude\":\"%f\"  }\n", iso_timestr, device_id,cpm, longitude,latitude);
 
   if((gps_status == 'A') && (geiger_status == 'A')) return 1;
                                                else return 0;

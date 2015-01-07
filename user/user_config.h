@@ -1,0 +1,3 @@
+#define APIKEY "YOURKEY"
+#define SSID "YOURSSID"
+#define SSID_PASSWORD "YOURPASSWD"
