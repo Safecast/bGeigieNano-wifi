@@ -1,5 +1,6 @@
 //#include <limits.h>
 #include "stdarg.h"
+#include <stdio.h>
 
 #define UINT_MAX 4294967295U
 /* Using an integer's bits as flags for both the conversion flags and length
@@ -16,20 +17,22 @@
 #define E_intptr     1<<13
 #define E_ldouble    1<<14
 #define E_unsigned   1<<16
+#define E_float      1<<17
+#define E_double     1<<18
 
 #define SIZE_MAX 500
 typedef unsigned int uintmax_t; 
 typedef int intmax_t;
-typedef unsigned int size_t;
+//typedef unsigned int size_t;
 typedef int ptrdiff_t;
 
-#define EOF -1
-#define NULL 0
+//#define EOF -1
+//#define NULL 0
 #define bool int
 #define true 1
 #define false 0
 
-char _PDCLIB_digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+char _PDCLIB_digits[] = "0123456789abcdefghijklmnopqrstuvwxyz.";
 
 int isspace(int c) { 
   if(c == ' ' ) return true;
@@ -52,12 +55,12 @@ struct _PDCLIB_status_t
     unsigned         width;  /* specified field width                        */
     int              prec;   /* specified field precision                    */
 
-    union {
-        void *           ctx;    /* context for callback */
+//    union {
+//        void *           ctx;    /* context for callback */
         const char *     s;      /* input string for scanf */
-    };
+//    };
 
-    void *stream;  /* for scanf */
+//    void *stream;  /* for scanf */
     va_list  arg;    /* argument stack                               */
 };
 
@@ -84,14 +87,14 @@ void * nmemchr( const void * s, int c, size_t n ) {
 static int GET( struct _PDCLIB_status_t * status )
 {
     int rc = EOF;
-    if ( status->stream != NULL )
-    {
+//    if ( status->stream != NULL )
+//    {
  //ALWAYS NULL!       rc = getc( status->stream );
-    }
-    else
-    {
+//    }
+//    else
+//    {
         rc = ( *status->s == '\0' ) ? EOF : (unsigned char)*((status->s)++);
-    }
+//    }
     if ( rc != EOF )
     {
         ++(status->i);
@@ -106,14 +109,14 @@ static int GET( struct _PDCLIB_status_t * status )
 */
 static void UNGET( int c, struct _PDCLIB_status_t * status )
 {
-    if ( status->stream != NULL )
-    {
+//    if ( status->stream != NULL )
+//    {
 // ALWAYS NULL!        ungetc( c, status->stream ); /* TODO: Error? */
-    }
-    else
-    {
+//    }
+//    else
+//    {
         --(status->s);
-    }
+//    }
     --(status->i);
     --(status->current);
 }
@@ -266,6 +269,7 @@ const char * _PDCLIB_scan(const char * spec, struct _PDCLIB_status_t * status )
     /* whether valid input had been parsed */
     bool value_parsed = false;
 
+    printf("parse loop, spec: %c\n", *spec);
     switch ( *spec )
     {
         case 'd':
@@ -287,6 +291,9 @@ const char * _PDCLIB_scan(const char * spec, struct _PDCLIB_status_t * status )
             status->flags |= E_unsigned;
             break;
         case 'f':
+            printf("f found\n");
+            status->base = 10;
+            break;
         case 'F':
         case 'e':
         case 'E':
@@ -297,12 +304,15 @@ const char * _PDCLIB_scan(const char * spec, struct _PDCLIB_status_t * status )
             break;
         case 'c':
         {
+            printf("parse c\n");
             char * c = va_arg( status->arg, char * );
             /* for %c, default width is one */
-            if ( status->width == SIZE_MAX )
+            //if ( status->width == SIZE_MAX )
+            if ( status->width == -1 )
             {
                 status->width = 1;
             }
+            printf("width %d\n",status->width);
             /* reading until width reached or input exhausted */
             while ( ( status->current < status->width ) &&
                     ( ( rc = GET( status ) ) != EOF ) )
@@ -314,6 +324,7 @@ const char * _PDCLIB_scan(const char * spec, struct _PDCLIB_status_t * status )
             if ( value_parsed )
             {
                 ++status->n;
+                printf("finished read\n");
                 return ++spec;
             }
             else
@@ -323,6 +334,7 @@ const char * _PDCLIB_scan(const char * spec, struct _PDCLIB_status_t * status )
                 {
                     status->n = -1;
                 }
+                printf("return fail\n");
                 return NULL;
             }
         }
@@ -439,13 +451,16 @@ const char * _PDCLIB_scan(const char * spec, struct _PDCLIB_status_t * status )
         }
         default:
             /* No conversion specifier. Bad conversion. */
+            printf("conv fail\n");
             return orig_spec;
     }
 
     if ( status->base != -1 )
     {
+ printf("parse int\n");
         /* integer conversion */
-        uintmax_t value = 0;         /* absolute value read */
+        uintmax_t value   = 0;         /* absolute value read */
+        double    value_f = 0;         /* absolute value read */
         bool prefix_parsed = false;
         int sign = 0;
         while ( ( status->current < status->width ) &&
@@ -540,15 +555,23 @@ const char * _PDCLIB_scan(const char * spec, struct _PDCLIB_status_t * status )
             }
             else
             {
+
+printf("parse: %c\n",rc);
                 char * digitptr = nmemchr( _PDCLIB_digits, tolower( rc ), status->base );
-                if ( digitptr == NULL )
-                {
-                    /* end of input item */
-                    UNGET( rc, status );
-                    break;
+                if(rc != '.') {
+                  if ( digitptr == NULL ) {
+printf("fail\n");
+                      /* end of input item */
+                      UNGET( rc, status );
+                      break;
+                  } else {
+                    value *= status->base;
+                    value += digitptr - _PDCLIB_digits;
+
+                    value_f *= status->base;
+                    value_f += digitptr - _PDCLIB_digits;
+                  }
                 }
-                value *= status->base;
-                value += digitptr - _PDCLIB_digits;
                 value_parsed = true;
             }
         }
@@ -608,6 +631,9 @@ const char * _PDCLIB_scan(const char * spec, struct _PDCLIB_status_t * status )
                 case E_intmax:
                     *( va_arg( status->arg,           intmax_t * ) ) =           (intmax_t)( value * sign );
                     break;
+                case E_float:
+                    *( va_arg( status->arg,           intmax_t * ) ) =           (intmax_t)( value * sign );
+                    break;
                 case E_intmax | E_unsigned:
                     *( va_arg( status->arg,          uintmax_t * ) ) =          (uintmax_t)( value * sign );
                     break;
@@ -645,7 +671,7 @@ int nsscanf( const char *s, const char *format, ... ) {
     status.s = (char *) s;
     status.width = 0;
     status.prec = 0;
-    status.stream = NULL;
+//    status.stream = NULL;
 
     va_list ap;
     va_start(ap,format);
@@ -678,6 +704,7 @@ int nsscanf( const char *s, const char *format, ... ) {
                         return EOF;
                     }
                     /* Matching error */
+                    printf("match error: %c AND %c\n",*format,*status.s);
                     return status.n;
                 }
                 else
