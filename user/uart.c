@@ -139,6 +139,7 @@ uart0_rx_intr_handler(void *para)
 
         pRxBuff->pWritePos++;
 
+        // if we hit the end of the buffer, loop back to the beginning
         if (pRxBuff->pWritePos == (pRxBuff->pRcvMsgBuff + RX_BUFF_SIZE)) {
             // overflow ...we may need more error handle here.
             pRxBuff->pWritePos = pRxBuff->pRcvMsgBuff ;
@@ -146,6 +147,16 @@ uart0_rx_intr_handler(void *para)
     }
 }
 
+ICACHE_FLASH_ATTR int uart0_rx_one_char() {
+  if(UartDev.rcv_buff.pReadPos == UartDev.rcv_buff.pWritePos) return -1;
+  int ret = *UartDev.rcv_buff.pReadPos;
+  UartDev.rcv_buff.pReadPos++;
+  if(UartDev.rcv_buff.pReadPos == (UartDev.rcv_buff.pRcvMsgBuff + RX_BUFF_SIZE)) {
+    UartDev.rcv_buff.pReadPos = UartDev.rcv_buff.pRcvMsgBuff;
+  }
+
+  return ret;
+}
 
 /******************************************************************************
  * FunctionName : uart0_tx_buffer
@@ -183,5 +194,7 @@ uart_init(UartBautRate uart0_br, UartBautRate uart1_br)
 
     // install uart1 putc callback
     os_install_putc1((void *)uart1_write_char);
+//    UartDev.rcv_buff.pWritePos = UartDev.rcv_buff.pRcvMsgBuff;
+//    UartDev.rcv_buff.pReadPos  = UartDev.rcv_buff.pRcvMsgBuff;
 }
 
