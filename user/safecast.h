@@ -9,6 +9,7 @@ static void ICACHE_FLASH_ATTR safecast_sent_cb(void *arg);
 static ICACHE_FLASH_ATTR int safecast_nema2json(const char *nema_string,char *json_string);
 void ICACHE_FLASH_ATTR safecast_send_data();
 void ICACHE_FLASH_ATTR safecast_send_nema(char *nema_string);
+int ICACHE_FLASH_ATTR safecast_sending_in_progress();
 
 
 #endif

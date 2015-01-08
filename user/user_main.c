@@ -19,20 +19,35 @@ os_event_t    user_procTaskQueue[user_procTaskQueueLen];
 static void loop(os_event_t *events);
 LOCAL os_timer_t network_timer;
 
+
+int line_buffer_pos = 0;
+char line_buffer[256];
+
 //Main code function
 static void ICACHE_FLASH_ATTR loop(os_event_t *events) {
-  os_delay_us(10000);
-  system_os_post(user_procTaskPrio, 0, 0 );
-/*
+
   int c = uart0_rx_one_char();
 
   if(c != -1) {
-    char out[30];
-    os_sprintf(out,"received %c",c);
-    debug(out);
+
+    if(c == '\r') {
+      line_buffer[line_buffer_pos]=0;
+      
+      char nema_data[256];
+      strcpy(nema_data,line_buffer);
+      if(!safecast_sending_in_progress()) safecast_send_nema(nema_data);
+      line_buffer_pos = 0;
+ 
+    } else {
+      line_buffer[line_buffer_pos] = c;
+      line_buffer_pos++;
+      if(line_buffer_pos > 255) line_buffer_pos=0;
+    }
+
   }
-*/
-//  os_delay_us(100);
+
+  os_delay_us(100);
+  system_os_post(user_procTaskPrio, 0, 0 );
 }
 
 void ICACHE_FLASH_ATTR network_wait_for_ip() {
@@ -44,7 +59,7 @@ void ICACHE_FLASH_ATTR network_wait_for_ip() {
     char page_buffer[40];
     os_sprintf(page_buffer,"myIP: %d.%d.%d.%d",IP2STR(&ipconfig.ip));
     debug(page_buffer);
-    safecast_send_nema("$BNRDD,1010,2015-01-06T17:31:15Z,0,0,128,V,3537.2633,N,13938.0270,E,37.70,A,9,11160");
+    //safecast_send_nema("$BNRDD,1010,2015-01-06T17:31:15Z,0,0,128,V,3537.2633,N,13938.0270,E,37.70,A,9,11160");
   } else {
     char page_buffer[40];
     os_sprintf(page_buffer,"network retry, status: %d",wifi_station_get_connect_status());
