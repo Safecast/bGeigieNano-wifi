@@ -15,13 +15,15 @@
 
 
 char json[1024];
-int sendcast_sending_in_progress_flag = 0;
+int safecast_sending_in_progress_flag = 0;
 
 static void ICACHE_FLASH_ATTR safecast_lookup_complete_cb(const char *name, ip_addr_t *ip, void *arg) {
   static esp_tcp tcp;
   struct espconn *conn=(struct espconn *)arg;
   if (ip==NULL) {
     debug("DNS lookup failed");
+    safecast_sending_in_progress_flag = 0;
+    //TODO: on lookup fail we might want to reset the network (or just reset the device?)
     return;
   }
 
@@ -58,7 +60,7 @@ static void ICACHE_FLASH_ATTR safecast_recv_cb(void *arg, char *data, unsigned s
   uart0_tx_buffer(data,len);
   
   espconn_disconnect(conn);
-  sendcast_sending_in_progress_flag = 0;
+  safecast_sending_in_progress_flag = 0;
 }
 
 static void ICACHE_FLASH_ATTR safecast_connected_cb(void *arg) {
@@ -92,6 +94,8 @@ static void ICACHE_FLASH_ATTR safecast_connected_cb(void *arg) {
 
   espconn_regist_recvcb(conn, safecast_recv_cb);
   debug("connect callback end");
+
+  //TODO: need to add timer, if no discon/recv after X seconds reset safecast_sending_in_progress_flag
 }
 
 static void ICACHE_FLASH_ATTR safecast_reconnected_cb(void *arg, sint8 err) {
@@ -99,7 +103,7 @@ static void ICACHE_FLASH_ATTR safecast_reconnected_cb(void *arg, sint8 err) {
 }
 
 static void ICACHE_FLASH_ATTR safecast_disconnected_cb(void *arg) {
-  sendcast_sending_in_progress_flag = 0;
+  safecast_sending_in_progress_flag = 0;
   debug("disconnect callback");
 }
 
@@ -114,7 +118,7 @@ void ICACHE_FLASH_ATTR safecast_send_data() {
 
 
 void ICACHE_FLASH_ATTR safecast_send_nema(char *nema_string) {
-  sendcast_sending_in_progress_flag = 1;
+  safecast_sending_in_progress_flag = 1;
 
   debug("passed nema:");
   debug(nema_string);
@@ -127,7 +131,7 @@ void ICACHE_FLASH_ATTR safecast_send_nema(char *nema_string) {
 
 int ICACHE_FLASH_ATTR safecast_sending_in_progress() {
 
-  return sendcast_sending_in_progress_flag;
+  return safecast_sending_in_progress_flag;
 }
 
 // json_string needs to be preallocated and large enough to hold the output

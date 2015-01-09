@@ -30,12 +30,14 @@ static void ICACHE_FLASH_ATTR loop(os_event_t *events) {
 
   if(c != -1) {
 
-    if(c == '\r') {
+    if((c == '\r') || (c == '\n')) {
       line_buffer[line_buffer_pos]=0;
       
-      char nema_data[256];
-      strcpy(nema_data,line_buffer);
-      if(!safecast_sending_in_progress()) safecast_send_nema(nema_data);
+      if(strlen(line_buffer) > 10) {
+        char nema_data[256];
+        strcpy(nema_data,line_buffer);
+        if(!safecast_sending_in_progress()) safecast_send_nema(nema_data);
+      }
       line_buffer_pos = 0;
  
     } else {
@@ -78,11 +80,23 @@ void ICACHE_FLASH_ATTR network_init() {
   debug("init network 2");
 }
 
+#define GPIO2 2
+
 //Init function 
 void ICACHE_FLASH_ATTR user_init() {
 
     // Set UART Speed (default appears to be rather odd 77KBPS)
     uart_init(BIT_RATE_9600,BIT_RATE_9600);
+
+    // check GPIO setting (for config mode selection)
+    //PIN_PULLUP_EN(GPIO2);
+    //int config = GPIO_INPUT_GET(GPIO2);
+    //if(config == 0) {
+    //   debug("config mode 0");
+    //} else {
+    //   debug("config mode 1");
+    //}
+
 
     //wifi_config();
     // Wifi configuration
@@ -94,8 +108,10 @@ void ICACHE_FLASH_ATTR user_init() {
     wifi_set_opmode( 0x1 );
 
     //Set ap settings
+    stationConf.bssid_set = 0;
     os_memcpy(&stationConf.ssid, ssid, 32);
     os_memcpy(&stationConf.password, password, 64);
+
     wifi_station_set_config(&stationConf);
     debug("init wifi");
     debug(SSID);
