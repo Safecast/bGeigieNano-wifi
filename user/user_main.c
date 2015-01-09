@@ -88,14 +88,18 @@ void ICACHE_FLASH_ATTR user_init() {
     // Set UART Speed (default appears to be rather odd 77KBPS)
     uart_init(BIT_RATE_9600,BIT_RATE_9600);
 
+    os_delay_us(10000);
+    gpio_init();
     // check GPIO setting (for config mode selection)
-    //PIN_PULLUP_EN(GPIO2);
-    //int config = GPIO_INPUT_GET(GPIO2);
-    //if(config == 0) {
-    //   debug("config mode 0");
-    //} else {
-    //   debug("config mode 1");
-    //}
+    //PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, FUNC_GPIO2);
+    PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0);
+    PIN_PULLUP_DIS(PERIPHS_IO_MUX_GPIO0_U);
+    PIN_PULLDWN_EN(PERIPHS_IO_MUX_GPIO0_U);
+    os_delay_us(10000);
+    int config = GPIO_INPUT_GET(0);//GPIO_ID_PIN(PERIPHS_IO_MUX_GPIO0_U));
+    char buffer[30];
+    os_sprintf(buffer,"config: %d",config);
+    debug(buffer);
 
 
     //wifi_config();
