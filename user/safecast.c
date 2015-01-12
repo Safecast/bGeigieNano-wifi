@@ -70,13 +70,30 @@ static void ICACHE_FLASH_ATTR safecast_connected_cb(void *arg) {
 
   char transmission[1024];
 
+  #ifdef USE_HARDCODED_SSID
   char *header = "POST /measurements.json?api_key=" APIKEY " HTTP/1.1\r\n"
                  "Host: dev.safecast.org\r\n"
                  "Accept: */*\r\n"
                  "User-Agent: Arduino\r\n"
                  "Content-Type: application/json\r\n"
                  "Content-Length: ";
- 
+  #endif
+
+  #ifndef USE_HARDCODED_SSID
+  char apikey[128];
+  int res = flash_key_value_get("apikey",apikey);
+  char header[1024];
+  strcpy(header,"POST /measurements.json?api_key=");
+  char *hpos = header+strlen(header)-1;
+  strcpy(hpos,apikey);
+  hpos = header+strlen(header)-1;
+  strcpy(hpos," HTTP/1.1\r\n"
+              "Host: dev.safecast.org\r\n"
+              "Accept: */*\r\n"
+              "User-Agent: Arduino\r\n"
+              "Content-Type: application/json\r\n"
+              "Content-Length: ");
+  #endif
  
   int head_len = strlen(header);
   int json_len = strlen(json);

@@ -10,8 +10,8 @@
 #include "espconn.h"
 #include "mem.h"
 #include "safecast.h"
+#include "http_config.h"
 #include "debug.h"
-
 
 #define user_procTaskPrio        0
 #define user_procTaskQueueLen    1
@@ -22,6 +22,7 @@ LOCAL os_timer_t network_timer;
 
 int line_buffer_pos = 0;
 char line_buffer[256];
+void ICACHE_FLASH_ATTR wifi_config_ap();
 
 //Main code function
 static void ICACHE_FLASH_ATTR loop(os_event_t *events) {
@@ -29,14 +30,14 @@ static void ICACHE_FLASH_ATTR loop(os_event_t *events) {
   int c = uart0_rx_one_char();
 
   if(c != -1) {
-
     if((c == '\r') || (c == '\n')) {
       line_buffer[line_buffer_pos]=0;
       
       if(strlen(line_buffer) > 10) {
         char nema_data[256];
         strcpy(nema_data,line_buffer);
-        if(!safecast_sending_in_progress()) safecast_send_nema(nema_data);
+        //REPLACE THIS LINE TO ENABLE PARSING/SENDING OF DATA
+        //if(!safecast_sending_in_progress()) safecast_send_nema(nema_data);
       }
       line_buffer_pos = 0;
  
@@ -45,7 +46,15 @@ static void ICACHE_FLASH_ATTR loop(os_event_t *events) {
       line_buffer_pos++;
       if(line_buffer_pos > 255) line_buffer_pos=0;
     }
+  }
 
+
+  int config = GPIO_INPUT_GET(0);
+  if(config!=1) {
+    char buffer[30];
+    os_sprintf(buffer,"config: %d",config);
+    debug(buffer);
+    wifi_config_ap();
   }
 
   os_delay_us(100);
@@ -80,32 +89,21 @@ void ICACHE_FLASH_ATTR network_init() {
   debug("init network 2");
 }
 
-#define GPIO2 2
-
-//Init function 
-void ICACHE_FLASH_ATTR user_init() {
-
-    // Set UART Speed (default appears to be rather odd 77KBPS)
-    uart_init(BIT_RATE_9600,BIT_RATE_9600);
-
-    os_delay_us(10000);
-    gpio_init();
-    // check GPIO setting (for config mode selection)
-    //PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, FUNC_GPIO2);
-    PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0);
-    PIN_PULLUP_DIS(PERIPHS_IO_MUX_GPIO0_U);
-    PIN_PULLDWN_EN(PERIPHS_IO_MUX_GPIO0_U);
-    os_delay_us(10000);
-    int config = GPIO_INPUT_GET(0);//GPIO_ID_PIN(PERIPHS_IO_MUX_GPIO0_U));
-    char buffer[30];
-    os_sprintf(buffer,"config: %d",config);
-    debug(buffer);
-
-
-    //wifi_config();
+void ICACHE_FLASH_ATTR wifi_config_station() {
     // Wifi configuration
-    char ssid[32] = SSID;
-    char password[64] = SSID_PASSWORD;
+
+    #ifdef USE_HARDCODED_SSID
+      char ssid[32] = SSID;
+      char password[64] = SSID_PASSWORD;
+    #endif
+
+    #ifndef USE_HARDCODED_SSID
+      char ssid[32];
+      char password[64];
+      int res = flash_key_value_get("ssid",ssid);
+      res = flash_key_value_get("pass",password);
+    #endif
+
     struct station_config stationConf;
 
     //Set station mode
@@ -118,8 +116,31 @@ void ICACHE_FLASH_ATTR user_init() {
 
     wifi_station_set_config(&stationConf);
     debug("init wifi");
-    debug(SSID);
-    debug(SSID_PASSWORD);
+    debug(ssid);
+    debug(password);
+}
+
+void ICACHE_FLASH_ATTR wifi_config_ap() {
+  wifi_station_disconnect();
+  wifi_set_opmode(0x3); //reset to AP+STA mode
+  os_printf("Reset to AP mode. Restarting system...\n");
+  system_restart();
+}
+
+//Init function 
+void ICACHE_FLASH_ATTR user_init() {
+
+    // Set UART Speed (default appears to be rather odd 77KBPS)
+    uart_init(BIT_RATE_9600,BIT_RATE_9600);
+
+    gpio_init();
+    // check GPIO setting (for config mode selection)
+    PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0);
+    PIN_PULLUP_EN(PERIPHS_IO_MUX_GPIO0_U);
+
+    wifi_config_station();
+    httpconfig_init();
+
 
     //Start os task
     system_os_task(loop, user_procTaskPrio,user_procTaskQueue, user_procTaskQueueLen);
