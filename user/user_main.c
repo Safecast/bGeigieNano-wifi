@@ -24,6 +24,8 @@ int line_buffer_pos = 0;
 char line_buffer[256];
 void ICACHE_FLASH_ATTR wifi_config_ap();
 
+int c_mode = 0;
+
 //Main code function
 static void ICACHE_FLASH_ATTR loop(os_event_t *events) {
 
@@ -51,10 +53,13 @@ static void ICACHE_FLASH_ATTR loop(os_event_t *events) {
 
   int config = GPIO_INPUT_GET(0);
   if(config!=1) {
-    char buffer[30];
-    os_sprintf(buffer,"config: %d",config);
-    debug(buffer);
-    wifi_config_ap();
+    if(c_mode != 1) {
+      char buffer[30];
+      os_sprintf(buffer,"config: %d",config);
+      debug(buffer);
+      wifi_config_ap();
+      c_mode=1;
+    }
   }
 
   os_delay_us(100);
@@ -70,7 +75,7 @@ void ICACHE_FLASH_ATTR network_wait_for_ip() {
     char page_buffer[40];
     os_sprintf(page_buffer,"myIP: %d.%d.%d.%d",IP2STR(&ipconfig.ip));
     debug(page_buffer);
-    //safecast_send_nema("$BNRDD,1010,2015-01-06T17:31:15Z,0,0,128,V,3537.2633,N,13938.0270,E,37.70,A,9,11160");
+    safecast_send_nema("$BNRDD,1010,2015-01-06T17:31:15Z,0,0,128,V,3537.2633,N,13938.0270,E,37.70,A,9,11160");
   } else {
     char page_buffer[40];
     os_sprintf(page_buffer,"network retry, status: %d",wifi_station_get_connect_status());
@@ -122,8 +127,8 @@ void ICACHE_FLASH_ATTR wifi_config_station() {
 
 void ICACHE_FLASH_ATTR wifi_config_ap() {
   wifi_station_disconnect();
-  wifi_set_opmode(0x3); //reset to AP+STA mode
-  os_printf("Reset to AP mode. Restarting system...\n");
+//  wifi_set_opmode(0x3); //reset to AP+STA mode
+  flash_key_value_set("mode","ap");
   system_restart();
 }
 
@@ -132,19 +137,43 @@ void ICACHE_FLASH_ATTR user_init() {
 
     // Set UART Speed (default appears to be rather odd 77KBPS)
     uart_init(BIT_RATE_9600,BIT_RATE_9600);
+    os_delay_us(10000);
+    debug("System init");
+    debug("System init");
+    debug("System init");
 
     gpio_init();
     // check GPIO setting (for config mode selection)
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0);
     PIN_PULLUP_EN(PERIPHS_IO_MUX_GPIO0_U);
 
-    wifi_config_station();
-    httpconfig_init();
+    char mode[128];
+    mode[0]=0;
+    int res = flash_key_value_get("mode",mode);
 
+    char buffer[50];
+    os_sprintf(buffer,"mode: %s",mode);
+    debug(buffer);
+
+    if(strcmp(mode,"sta") == 0) {
+      debug("Booting in station mode");
+      wifi_config_station();
+      network_init();  // only require for station mode
+    } else {
+      debug("Booting in AP mode");
+      struct station_config stationConf;
+      stationConf.bssid_set = 0;
+      os_memcpy(&stationConf.ssid, "", 32);
+      os_memcpy(&stationConf.password, "", 64);
+      wifi_station_set_config(&stationConf);
+      wifi_set_opmode(0x3);
+    }
+
+    httpconfig_init();
 
     //Start os task
     system_os_task(loop, user_procTaskPrio,user_procTaskQueue, user_procTaskQueueLen);
     system_os_post(user_procTaskPrio, 0, 0 );
 
-    network_init();
+    debug("System init complete");
 }

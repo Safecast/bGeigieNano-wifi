@@ -110,6 +110,7 @@ static int ICACHE_FLASH_ATTR parse_header(char *data,int len,struct espconn *con
     if(transmission[0] == 0) strcpy(transmission,"ERASE OK");
     sint8 d = espconn_sent(conn,transmission,strlen(transmission));
     espconn_disconnect(conn);
+    return 1;
   }
  
   char buffer[1025];
@@ -140,6 +141,7 @@ static int ICACHE_FLASH_ATTR parse_header(char *data,int len,struct espconn *con
     flash_key_value_set("ssid",ssid);
     flash_key_value_set("pass",password);
     flash_key_value_set("apikey",apikey);
+    flash_key_value_set("mode","sta");
     char transmission[65];
     strcpy(transmission,"SET ALL OK");
     sint8 d = espconn_sent(conn,transmission,strlen(transmission));

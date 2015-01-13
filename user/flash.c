@@ -1,11 +1,10 @@
 #include "flash.h"
 
-
 ICACHE_FLASH_ATTR static char *find_key(const char *key,char *settings) {
 
   int n;
   for(n=0;n<1024;n+=128) {
-    if(strcmp(key,settings+n) == 0) return settings+n;
+    if(strncmp(key,settings+n,64) == 0) return settings+n;
   }
   return 0;
 }
@@ -64,8 +63,12 @@ ICACHE_FLASH_ATTR int flash_key_value_get(char *key,char *value) {
 
   char *location = find_key(key,settings);
 
-  if(location == NULL) value[0]=0;
-  strcpy(value,location+64);
+  if(location == NULL) {
+    value[0]=0;
+    return 0;
+  } else {
+    strcpy(value,location+64);
+  }
   return 1;
 }
 
