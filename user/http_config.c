@@ -81,16 +81,16 @@ static int ICACHE_FLASH_ATTR parse_get(char *buffer) {
 static int ICACHE_FLASH_ATTR find_value(const char *search_key,char *result) {
   // now search key/value pairs
   debug("findkey");
+  result[0]=0;
 
   int n;
   char prn[100];
   for(n=0;n<keyvalsize;n++) {
     if(strcmp(keys[n],search_key) == 0) {
-      os_sprintf(prn,"fnd: %s",values[n]);
+      os_sprintf(prn,"found: %s",values[n]);
       debug(prn);
       strcpy(result,values[n]);
       debug("found result");
-     
       return 1;
     }
   }

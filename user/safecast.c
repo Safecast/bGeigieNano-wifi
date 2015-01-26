@@ -84,9 +84,9 @@ static void ICACHE_FLASH_ATTR safecast_connected_cb(void *arg) {
   int res = flash_key_value_get("apikey",apikey);
   char header[1024];
   strcpy(header,"POST /measurements.json?api_key=");
-  char *hpos = header+strlen(header)-1;
+  char *hpos = header+strlen(header);
   strcpy(hpos,apikey);
-  hpos = header+strlen(header)-1;
+  hpos = header+strlen(header);
   strcpy(hpos," HTTP/1.1\r\n"
               "Host: dev.safecast.org\r\n"
               "Accept: */*\r\n"
@@ -107,6 +107,7 @@ static void ICACHE_FLASH_ATTR safecast_connected_cb(void *arg) {
   strcpy(transmission+head_len+json_len_str_len,"\r\n\r\n");
   strcpy(transmission+head_len+json_len_str_len+4,json);
 
+  debug(transmission);
   sint8 d = espconn_sent(conn,transmission,strlen(transmission));
 
   espconn_regist_recvcb(conn, safecast_recv_cb);
@@ -142,7 +143,7 @@ void ICACHE_FLASH_ATTR safecast_send_nema(char *nema_string) {
   int valid = safecast_nema2json(nema_string,json);
   debug(json);
 
-  // normal we will only want to send valid data...
+  // normally we will only want to send valid data...
   safecast_send_data();
 }
 

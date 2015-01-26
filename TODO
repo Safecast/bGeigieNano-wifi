@@ -1,0 +1,3 @@
+* Currently requires flash erase via http interface on first use
+* HTTP config not returning "success" message (change in new SDK?)
+* New SDK is only now processing the first NEMA?

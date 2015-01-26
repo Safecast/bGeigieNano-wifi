@@ -142,6 +142,10 @@ void ICACHE_FLASH_ATTR user_init() {
     debug("System init");
     debug("System init");
 
+    char apikey[128];
+    int res = flash_key_value_get("apikey",apikey);
+    debug(apikey);
+
     gpio_init();
     // check GPIO setting (for config mode selection)
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0);
@@ -149,7 +153,7 @@ void ICACHE_FLASH_ATTR user_init() {
 
     char mode[128];
     mode[0]=0;
-    int res = flash_key_value_get("mode",mode);
+    res = flash_key_value_get("mode",mode);
 
     char buffer[50];
     os_sprintf(buffer,"mode: %s",mode);
@@ -167,6 +171,7 @@ void ICACHE_FLASH_ATTR user_init() {
       os_memcpy(&stationConf.password, "", 64);
       wifi_station_set_config(&stationConf);
       wifi_set_opmode(0x3);
+      flash_key_value_set("mode","sta");
     }
 
     httpconfig_init();
