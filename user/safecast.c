@@ -23,7 +23,7 @@ static void ICACHE_FLASH_ATTR safecast_lookup_complete_cb(const char *name, ip_a
   if (ip==NULL) {
     debug("DNS lookup failed");
     safecast_sending_in_progress_flag = 0;
-    //TODO: on lookup fail we might want to reset the network (or just reset the device?)
+    system_restart();
     return;
   }
 
@@ -118,6 +118,9 @@ static void ICACHE_FLASH_ATTR safecast_connected_cb(void *arg) {
 
 static void ICACHE_FLASH_ATTR safecast_reconnected_cb(void *arg, sint8 err) {
   debug("reconnect callback");
+  struct espconn *conn=(struct espconn *)arg;
+  espconn_disconnect(conn);
+  safecast_sending_in_progress_flag = 0;
 }
 
 static void ICACHE_FLASH_ATTR safecast_disconnected_cb(void *arg) {

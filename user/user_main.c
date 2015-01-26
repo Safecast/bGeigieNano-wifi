@@ -39,7 +39,7 @@ static void ICACHE_FLASH_ATTR loop(os_event_t *events) {
         char nema_data[256];
         strcpy(nema_data,line_buffer);
         //REPLACE THIS LINE TO ENABLE PARSING/SENDING OF DATA
-        //if(!safecast_sending_in_progress()) safecast_send_nema(nema_data);
+        if(!safecast_sending_in_progress()) safecast_send_nema(nema_data);
       }
       line_buffer_pos = 0;
  
@@ -75,7 +75,7 @@ void ICACHE_FLASH_ATTR network_wait_for_ip() {
     char page_buffer[40];
     os_sprintf(page_buffer,"myIP: %d.%d.%d.%d",IP2STR(&ipconfig.ip));
     debug(page_buffer);
-    safecast_send_nema("$BNRDD,1010,2015-01-06T17:31:15Z,0,0,128,V,3537.2633,N,13938.0270,E,37.70,A,9,11160");
+//    safecast_send_nema("$BNRDD,1010,2015-01-06T17:31:15Z,0,0,128,V,3537.2633,N,13938.0270,E,37.70,A,9,11160");
   } else {
     char page_buffer[40];
     os_sprintf(page_buffer,"network retry, status: %d",wifi_station_get_connect_status());
