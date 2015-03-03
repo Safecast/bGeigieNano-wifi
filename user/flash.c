@@ -38,11 +38,11 @@ ICACHE_FLASH_ATTR int flash_key_value_set(const char *key,const char *value) {
   spi_flash_read(0x3C000, (uint32 *) settings, 1024);
 
   char *location = find_key(key,settings);
-  if(location == NULL) {
+  if(location == 0) {
     location = find_free(settings);
   }
 
-  if(location == NULL) return 0;
+  if(location == 0) return 0;
 
   strcpy(location,key);
   strcpy(location+64,value);
@@ -63,7 +63,7 @@ ICACHE_FLASH_ATTR int flash_key_value_get(char *key,char *value) {
 
   char *location = find_key(key,settings);
 
-  if(location == NULL) {
+  if(location == 0) {
     value[0]=0;
     return 0;
   } else {
@@ -71,4 +71,3 @@ ICACHE_FLASH_ATTR int flash_key_value_get(char *key,char *value) {
   }
   return 1;
 }
-

@@ -107,7 +107,7 @@ static int ICACHE_FLASH_ATTR parse_header(char *data,int len,struct espconn *con
     debug("received erase all");
     char transmission[65];
     transmission[0]=0;
-    if(transmission[0] == 0) strcpy(transmission,"ERASE OK");
+    if(transmission[0] == 0) strcpy(transmission,"ERASE OK</body></html>");
     sint8 d = espconn_sent(conn,transmission,strlen(transmission));
     espconn_disconnect(conn);
     return 1;
@@ -129,6 +129,9 @@ static int ICACHE_FLASH_ATTR parse_header(char *data,int len,struct espconn *con
   
   char apikey[128];
   find_value("apikey",apikey);
+  
+  char fivemin[128];
+  find_value("5min",fivemin);
 
   // TODO: grab current values of "ssid" "pass" and "apikey"
 
@@ -142,13 +145,16 @@ static int ICACHE_FLASH_ATTR parse_header(char *data,int len,struct espconn *con
     flash_key_value_set("pass",password);
     flash_key_value_set("apikey",apikey);
     flash_key_value_set("mode","sta");
+    if(strncpy(fivemin,"1",1) == 0) flash_key_value_set("5min","1");
+    if(strncpy(fivemin,"0",1) == 0) flash_key_value_set("5min","0");
+
     char transmission[65];
-    strcpy(transmission,"SET ALL OK");
+    strcpy(transmission,"SET ALL OK</body></html>");
     sint8 d = espconn_sent(conn,transmission,strlen(transmission));
     espconn_disconnect(conn);
   } else {
     char transmission[65];
-    strcpy(transmission,"<h1>NEED ALL OF SSID/PASS/APIKEY</h1>");
+    strcpy(transmission,"<h1>NEED ALL OF SSID/PASS/APIKEY</h1></body></html>");
     sint8 d = espconn_sent(conn,transmission,strlen(transmission));
     espconn_disconnect(conn);
   }
@@ -212,7 +218,7 @@ static void ICACHE_FLASH_ATTR httpconfig_connected_cb(void *arg) {
   //  espconn_disconnect(conn);
   //}
 
-  char *transmission = "HTTP/1.0 200\r\n\r\n<!DOCTYPE html>\r\n<html>\r\n<body>\r\n<form action=\"save\" method=\"get\"> SSID: <input type=\"text\" name=\"ssid\"><br> PASSWORD: <input type=\"text\" name=\"pass\"><br> SAFECAST APIKEY: <input type=\"text\" name=\"apikey\"><br> <input type=\"submit\" value=\"Submit\"> </form> </body> </html>";
+  char *transmission = "HTTP/1.0 200\r\n\r\n<!DOCTYPE html>\r\n<html>\r\n<body>\r\n<form action=\"save\" method=\"get\"> SSID: <input type=\"text\" name=\"ssid\"><br> PASSWORD: <input type=\"text\" name=\"pass\"><br> SAFECAST APIKEY: <input type=\"text\" name=\"apikey\"><br>Submit once every 5min:<input type=\"checkbox\" checked><br> <input type=\"submit\" value=\"Submit\"> </form><br>";
 
   sint8 d = espconn_sent(conn,transmission,strlen(transmission));
   char buffer[20];

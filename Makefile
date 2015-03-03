@@ -20,7 +20,7 @@ SDK_BASE	?= /opt/Espressif/xtensalibs
 #Esptool.py path and port
 #ESPTOOL		?= esptool.py
 ESPTOOL		?= /opt/Espressif/esptool-py/esptool.py
-ESPPORT		?= /dev/ttyUSB64
+ESPPORT		?= /dev/ttyUSB0
 
 # name for the target project
 TARGET		= app

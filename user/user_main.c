@@ -27,10 +27,15 @@ void ICACHE_FLASH_ATTR wifi_config_ap();
 int c_mode = 0;
 
 //Main code function
+
+int running_mode_ap = 0;
+int fivemin_interval = 0;
+int data_count = 0;
 static void ICACHE_FLASH_ATTR loop(os_event_t *events) {
 
   int c = uart0_rx_one_char();
 
+  if(running_mode_ap == 0)
   if(c != -1) {
     if((c == '\r') || (c == '\n')) {
       line_buffer[line_buffer_pos]=0;
@@ -38,8 +43,12 @@ static void ICACHE_FLASH_ATTR loop(os_event_t *events) {
       if(strlen(line_buffer) > 10) {
         char nema_data[256];
         strcpy(nema_data,line_buffer);
-        //REPLACE THIS LINE TO ENABLE PARSING/SENDING OF DATA
-        if(!safecast_sending_in_progress()) safecast_send_nema(nema_data);
+        if(((fivemin_interval == 1) && (data_count == (5*60)/5)) || 
+           ( fivemin_interval == 0)) {
+          if(!safecast_sending_in_progress()) safecast_send_nema(nema_data);
+          data_count = 0;
+        }
+        data_count++;
       }
       line_buffer_pos = 0;
  
@@ -161,9 +170,16 @@ void ICACHE_FLASH_ATTR user_init() {
 
     if(strcmp(mode,"sta") == 0) {
       debug("Booting in station mode");
+      char fivemin_str[64];
+      res = flash_key_value_get("5min",fivemin_str);
+      if(strncpy(fivemin_str,"1",1) == 0) fivemin_interval = 1;
       wifi_config_station();
       network_init();  // only require for station mode
     } else {
+      running_mode_ap = 1;
+      if(strcmp(mode,"ap") != 0) {
+        flash_erase_all();
+      }
       debug("Booting in AP mode");
       struct station_config stationConf;
       stationConf.bssid_set = 0;
