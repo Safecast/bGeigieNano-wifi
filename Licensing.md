@@ -9,7 +9,7 @@ When you contribute to Safecast by [participating in this event] OR [submitting 
 
 	•	All Data is Creative Commons Zero (http://creativecommons.org/publicdomain/zero/1.0/), anyone is free to make any use of the data, attribution is not legally required but is encouraged;
 	•	All Design is Creative Commons Attribution Share-Alike (http://creativecommons.org/licenses/by-sa/4.0/), anyone is free to copy, edit and republish the design but must make it clear Safecast is the source and the design must be published under the same or a compatible license;
-	•	All ufnctional aspects of design are under the Berkeley Software Distribution License (https://blog.safecast.org/bsd) in respect of copyright and the XL1.0 Cross Licence 
+	•	All functional aspects of design are under the Berkeley Software Distribution License (http://blog.safecast.org/bsd) in respect of copyright and the XL1.0 Cross Licence 
 	•	(http://blog.safecast.org/wp-content/uploads/2012/05/xl_crosslicense.pdf) in respect of patent;
 	•	Web Content is under Creative Commons Attribution Non Commercial (http://creativecommons.org/licenses/by-nc/3.0/), anyone can copy and remix the what is on the website but must attribute Safecast and anyone else specified by  Safecast.
 
