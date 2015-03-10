@@ -17,6 +17,8 @@
 char json[1024];
 int safecast_sending_in_progress_flag = 0;
 
+bool use_devserver = true;
+
 static void ICACHE_FLASH_ATTR safecast_lookup_complete_cb(const char *name, ip_addr_t *ip, void *arg) {
   static esp_tcp tcp;
   struct espconn *conn=(struct espconn *)arg;
@@ -70,16 +72,6 @@ static void ICACHE_FLASH_ATTR safecast_connected_cb(void *arg) {
 
   char transmission[1024];
 
-  #ifdef USE_HARDCODED_SSID
-  char *header = "POST /measurements.json?api_key=" APIKEY " HTTP/1.1\r\n"
-                 "Host: dev.safecast.org\r\n"
-                 "Accept: */*\r\n"
-                 "User-Agent: Arduino\r\n"
-                 "Content-Type: application/json\r\n"
-                 "Content-Length: ";
-  #endif
-
-  #ifndef USE_HARDCODED_SSID
   char apikey[128];
   int res = flash_key_value_get("apikey",apikey);
   char header[1024];
@@ -87,13 +79,21 @@ static void ICACHE_FLASH_ATTR safecast_connected_cb(void *arg) {
   char *hpos = header+strlen(header);
   strcpy(hpos,apikey);
   hpos = header+strlen(header);
-  strcpy(hpos," HTTP/1.1\r\n"
-              "Host: dev.safecast.org\r\n"
-              "Accept: */*\r\n"
-              "User-Agent: Arduino\r\n"
-              "Content-Type: application/json\r\n"
-              "Content-Length: ");
-  #endif
+  if(use_devserver) {
+    strcpy(hpos," HTTP/1.1\r\n"
+                "Host: dev.safecast.org\r\n"
+                "Accept: */*\r\n"
+                "User-Agent: Arduino\r\n"
+                "Content-Type: application/json\r\n"
+                "Content-Length: ");
+  } else {
+    strcpy(hpos," HTTP/1.1\r\n"
+                "Host: api.safecast.org\r\n"
+                "Accept: */*\r\n"
+                "User-Agent: Arduino\r\n"
+                "Content-Type: application/json\r\n"
+                "Content-Length: ");
+  }
  
   int head_len = strlen(header);
   int json_len = strlen(json);
@@ -134,7 +134,11 @@ void ICACHE_FLASH_ATTR safecast_send_data() {
   static ip_addr_t ip;
 
   debug("network lookup");
-  espconn_gethostbyname(&conn, "dev.safecast.org", &ip, safecast_lookup_complete_cb);
+  if(use_devserver) {
+    espconn_gethostbyname(&conn, "dev.safecast.org", &ip, safecast_lookup_complete_cb);
+  } else {
+    espconn_gethostbyname(&conn, "api.safecast.org", &ip, safecast_lookup_complete_cb);
+  }
 }
 
 
@@ -175,7 +179,7 @@ ICACHE_FLASH_ATTR int safecast_nema2json(const char *nema_string,char *json_stri
   float  altitude;
   char   gps_status;
   int    nbsat;
-  char    precision[50];
+  char   precision[50];
 
   iso_timestr[0]=0;
 
@@ -214,4 +218,8 @@ ICACHE_FLASH_ATTR int safecast_nema2json(const char *nema_string,char *json_stri
   if((gps_status == 'A') && (geiger_status == 'A')) return 1;
                                                else return 0;
 
+}
+
+void ICACHE_FLASH_ATTR safecast_set_devserver(bool val) {
+  use_devserver = val;
 }

@@ -173,6 +173,13 @@ void ICACHE_FLASH_ATTR user_init() {
       char fivemin_str[64];
       res = flash_key_value_get("5min",fivemin_str);
       if(strncpy(fivemin_str,"1",1) == 0) fivemin_interval = 1;
+
+      char server[128];
+      mode[0]=0;
+      res = flash_key_value_get("devserver",server);
+      if(strncpy(server,"0",1) == 0) safecast_set_devserver(false);
+                                else safecast_set_devserver(true);
+                                 
       wifi_config_station();
       network_init();  // only require for station mode
     } else {

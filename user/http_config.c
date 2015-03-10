@@ -132,6 +132,9 @@ static int ICACHE_FLASH_ATTR parse_header(char *data,int len,struct espconn *con
   
   char fivemin[128];
   find_value("5min",fivemin);
+  
+  char devsrv[128];
+  find_value("devsrv",devsrv);
 
   // TODO: grab current values of "ssid" "pass" and "apikey"
 
@@ -145,8 +148,11 @@ static int ICACHE_FLASH_ATTR parse_header(char *data,int len,struct espconn *con
     flash_key_value_set("pass",password);
     flash_key_value_set("apikey",apikey);
     flash_key_value_set("mode","sta");
-    if(strncpy(fivemin,"1",1) == 0) flash_key_value_set("5min","1");
-    if(strncpy(fivemin,"0",1) == 0) flash_key_value_set("5min","0");
+    if(strncpy(fivemin,"on",1) == 0) flash_key_value_set("5min","1");
+                                else flash_key_value_set("5min","0");
+
+    if(strncpy(devsrv,"on",1) == 0) flash_key_value_set("devserver","1");
+                               else flash_key_value_set("devserver","0");
 
     char transmission[65];
     strcpy(transmission,"SET ALL OK</body></html>");
@@ -218,7 +224,7 @@ static void ICACHE_FLASH_ATTR httpconfig_connected_cb(void *arg) {
   //  espconn_disconnect(conn);
   //}
 
-  char *transmission = "HTTP/1.0 200\r\n\r\n<!DOCTYPE html>\r\n<html>\r\n<body>\r\n<form action=\"save\" method=\"get\"> SSID: <input type=\"text\" name=\"ssid\"><br> PASSWORD: <input type=\"text\" name=\"pass\"><br> SAFECAST APIKEY: <input type=\"text\" name=\"apikey\"><br>Submit once every 5min:<input type=\"checkbox\" checked><br> <input type=\"submit\" value=\"Submit\"> </form><br>";
+  char *transmission = "HTTP/1.0 200\r\n\r\n<!DOCTYPE html>\r\n<html>\r\n<body>\r\n<form action=\"save\" method=\"get\"> SSID: <input type=\"text\" name=\"ssid\"><br> PASSWORD: <input type=\"text\" name=\"pass\"><br> SAFECAST APIKEY: <input type=\"text\" name=\"apikey\"><br>Submit once every 5min:<input name=\"fivemin\" type=\"checkbox\" checked><br>Use safecast development server:<input name=\"devsrv\" type=\"checkbox\" checked><br><input type=\"submit\" value=\"Submit\"> </form><br>";
 
   sint8 d = espconn_sent(conn,transmission,strlen(transmission));
   char buffer[20];
