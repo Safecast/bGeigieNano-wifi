@@ -29,7 +29,7 @@ int c_mode = 0;
 //Main code function
 
 int running_mode_ap = 0;
-int fivemin_interval = 0;
+bool fivemin_interval = false;
 int data_count = 0;
 static void ICACHE_FLASH_ATTR loop(os_event_t *events) {
 
@@ -43,8 +43,8 @@ static void ICACHE_FLASH_ATTR loop(os_event_t *events) {
       if(strlen(line_buffer) > 10) {
         char nema_data[256];
         strcpy(nema_data,line_buffer);
-        if(((fivemin_interval == 1) && (data_count == (5*60)/5)) || 
-           ( fivemin_interval == 0)) {
+        if(((fivemin_interval == true) && (data_count == (5*60)/5)) || 
+           ( fivemin_interval == false)) {
           if(!safecast_sending_in_progress()) safecast_send_nema(nema_data);
           data_count = 0;
         }
@@ -171,15 +171,20 @@ void ICACHE_FLASH_ATTR user_init() {
     if(strcmp(mode,"sta") == 0) {
       debug("Booting in station mode");
       char fivemin_str[64];
-      res = flash_key_value_get("5min",fivemin_str);
-      if(strncpy(fivemin_str,"1",1) == 0) fivemin_interval = 1;
+      res = flash_key_value_get("fivemin",fivemin_str);
+      if(fivemin_str[0] == '1') {fivemin_interval = true ; debug("five min interval between transmit"); }
+                           else  fivemin_interval = false;
+      debug(fivemin_str);
 
       char server[128];
       mode[0]=0;
       res = flash_key_value_get("devserver",server);
-      if(strncpy(server,"0",1) == 0) safecast_set_devserver(false);
-                                else safecast_set_devserver(true);
+      if(server[0] == '0') {safecast_set_devserver(false); debug("using live server"); }
+                      else {safecast_set_devserver(true);  debug("using dev server"); }
                                  
+      debug("values:");
+      debug(fivemin_str);
+      debug(server);
       wifi_config_station();
       network_init();  // only require for station mode
     } else {

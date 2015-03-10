@@ -16,8 +16,8 @@ static esp_tcp httpconfig_tcp_conn;
 char recv_buffer[1024]; // It's going to be /really/ easy to kill this thing.
 int  recv_buffer_size = 0;
 
-// We can only cope with 5 key/values
-#define keyvalsize 5
+// We can only cope with 8 key/values
+#define keyvalsize 8
 char keys[keyvalsize][20];
 char values[keyvalsize][128];
 
@@ -43,11 +43,11 @@ static int ICACHE_FLASH_ATTR parse_get(char *buffer) {
   debug(prn);
 
   // start at first whitespace
-  for(n=0;buffer[n] != 0;n++) {
-    if(buffer[n] == ' ') {buffer = buffer+n; break;}
-  }
-  os_sprintf(prn,"b2: %s",buffer);
-  debug(prn);
+  //for(n=0;buffer[n] != 0;n++) {
+  //  if(buffer[n] == ' ') {buffer = buffer+n; break;}
+  //}
+  //os_sprintf(prn,"b2: %s",buffer);
+  //debug(prn);
 
   // start at first ?
   int found=0;
@@ -64,14 +64,15 @@ static int ICACHE_FLASH_ATTR parse_get(char *buffer) {
   for(;;) {
     if(c!=0) buffer = strtok (NULL,"&=\n\r ");
     if(buffer == NULL) break;
-  os_sprintf(prn,"bA: %s",buffer);
-  debug(prn);
-    strcpy(keys[c],buffer);
+//    os_sprintf(prn,"bA: %s",buffer);
+//    debug(prn);
+    strncpy(keys[c],buffer,64);
     buffer = strtok (NULL,"&=\n\r ");
     if(buffer == NULL) break;
-  os_sprintf(prn,"bB: %s",buffer);
-  debug(prn);
-    strcpy(values[c],buffer);
+//    os_sprintf(prn,"bB: %s",buffer);
+//    debug(prn);
+    strncpy(values[c],buffer,64);
+    values[c][63]=0;
     c++;
     if(c>=keyvalsize) break;
   }
@@ -84,16 +85,16 @@ static int ICACHE_FLASH_ATTR find_value(const char *search_key,char *result) {
   result[0]=0;
 
   int n;
-  char prn[100];
+  char prn[200];
   for(n=0;n<keyvalsize;n++) {
-    if(strcmp(keys[n],search_key) == 0) {
-      os_sprintf(prn,"found: %s",values[n]);
-      debug(prn);
+    if(strncmp(keys[n],search_key,64) == 0) { 
+      values[n][127]=0;
       strcpy(result,values[n]);
       debug("found result");
       return 1;
     }
   }
+  return 0;
 }
 
 static int ICACHE_FLASH_ATTR parse_header(char *data,int len,struct espconn *conn) {
@@ -122,18 +123,23 @@ static int ICACHE_FLASH_ATTR parse_header(char *data,int len,struct espconn *con
 
   //Parse out settings
   char ssid[128];
+  ssid[0]=0;
   find_value("ssid",ssid);
 
   char password[128];
+  password[0]=0;
   find_value("pass",password);
   
   char apikey[128];
+  apikey[0]=0;
   find_value("apikey",apikey);
   
   char fivemin[128];
-  find_value("5min",fivemin);
+  fivemin[0]=0;
+  find_value("fivemin",fivemin);
   
   char devsrv[128];
+  devsrv[0]=0;
   find_value("devsrv",devsrv);
 
   // TODO: grab current values of "ssid" "pass" and "apikey"
@@ -145,14 +151,35 @@ static int ICACHE_FLASH_ATTR parse_header(char *data,int len,struct espconn *con
     
     debug("flashing settings");
     flash_key_value_set("ssid",ssid);
+    debug("1");
     flash_key_value_set("pass",password);
+    debug("2");
     flash_key_value_set("apikey",apikey);
+    debug("3");
     flash_key_value_set("mode","sta");
-    if(strncpy(fivemin,"on",1) == 0) flash_key_value_set("5min","1");
-                                else flash_key_value_set("5min","0");
+    debug("4");
 
-    if(strncpy(devsrv,"on",1) == 0) flash_key_value_set("devserver","1");
-                               else flash_key_value_set("devserver","0");
+    char one[3];
+    char zero[3];
+    strcpy(one,"1");
+    strcpy(zero,"0");
+    debug("fmin is:");
+    debug(fivemin);
+    if(strcmp(fivemin,"on") == 0) {debug("setting fivemin=1"); flash_key_value_set("fivemin",one);}
+                             else flash_key_value_set("fivemin",zero);
+    debug("5");
+
+    debug("dsrv is:");
+    debug(devsrv);
+    int res=1;
+    if(strcmp(devsrv,"on") == 0) res = flash_key_value_set("devserver",one);
+                            else res = flash_key_value_set("devserver",zero);
+
+    if(res==0) {
+      // we couldn't write settings, which means the storage was full or something bad happened.
+      flash_erase_all();
+    }
+    debug("6");
 
     char transmission[65];
     strcpy(transmission,"SET ALL OK</body></html>");
